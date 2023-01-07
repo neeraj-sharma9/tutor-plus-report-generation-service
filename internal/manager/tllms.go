@@ -85,14 +85,14 @@ func (tM *TllmsManager) SubjectWiseAssignmentsAverage(assessmentIds []int, userI
 	return result
 }
 
-func (tM *TllmsManager) PostClassPerformanceTillDate(assessmentIds []int, userIds []int64) []contract.PostAssignmentTillDate {
+func (tM *TllmsManager) PostClassPerformanceTillDate(assessmentIds []int, userId int64) []contract.PostAssignmentTillDate {
 	var result []contract.PostAssignmentTillDate
 	if err := tM.db.Table("assignments").Where("assessment_id in (?)", assessmentIds).
-		Where("assignee_id in (?)", userIds).Group("status").
+		Where("assignee_id = (?)", userId).Group("status").
 		Select("status, COUNT(id)").
 		Scan(&result).Error; err != nil {
 		logger.Log.Sugar().Errorf("Error in PostClassPerformanceTillDate query: %v, for asessmentIds: %v and "+
-			"userIds: %v", err, assessmentIds, userIds)
+			"userId: %v", err, assessmentIds, userId)
 	}
 	return result
 }
@@ -206,8 +206,8 @@ func (tM *TllmsManager) DifficultyGraphQuery(assessmentId int, userId int64) []c
 	return result
 }
 
-func (tM *TllmsManager) SkillAnalysisQuery(assessmentId int, userId int64) []contract.SkillAnalysisGraph {
-	var result []contract.SkillAnalysisGraph
+func (tM *TllmsManager) SkillAnalysisQuery(assessmentId int, userId int64) []contract.DifficultySkillCursor {
+	var result []contract.DifficultySkillCursor
 	if err := tM.db.Table("question_attempts").
 		Joins("INNER JOIN questions q ON q.id=question_attempts.question_id").
 		Joins("INNER JOIN raw_questions rq ON rq.id=q.raw_question_id").
@@ -235,7 +235,7 @@ func (tM *TllmsManager) SubjectWiseScoreQuery(assessmentId int, userId int64) []
 	return result
 }
 
-func (tM *TllmsManager) MultiUserAverageScoreQuery(assessmentId int, userIds map[int][]int64) []contract.MultiUserAverageScore {
+func (tM *TllmsManager) MultiUserAverageScoreQuery(assessmentId int, userIds []int64) []contract.MultiUserAverageScore {
 	var result []contract.MultiUserAverageScore
 	if err := tM.db.Table("assignments").
 		Where("assessment_id = (?)", assessmentId).Where("assignee_id in (?)", userIds).

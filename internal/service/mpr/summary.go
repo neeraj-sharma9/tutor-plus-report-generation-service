@@ -2,39 +2,24 @@ package mpr
 
 import (
 	"fmt"
-	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/helper"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/manager"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/service/mpr/callout"
 	"math"
 	"strings"
-	"sync"
 )
 
-func (report *ProgressData) setSummaryPage(mprReq *helper.MPRReq, wg *sync.WaitGroup) {
-	defer func() {
-		if r := recover(); r != nil {
-			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("setSummaryPage paniced - %s", r)
-		}
-		wg.Done()
-	}()
-	summary := &SummaryOfLearning{}
-	var waitGroup sync.WaitGroup
-	waitGroup.Add(2)
-	go summary.SetChaptersCovered(mprReq, &waitGroup)
-	go summary.SetClassAttendance(mprReq, &waitGroup)
-	waitGroup.Wait()
-	report.SummaryOfLearning = *summary
+type SummaryService struct {
+	TllmsManager *manager.TllmsManager
 }
 
-func (summary *SummaryOfLearning) SetChaptersCovered(mprReq *helper.MPRReq, wg *sync.WaitGroup) {
+func (sS *SummaryService) GetChaptersCovered(mprReq *MPRReq) ChaptersCovered {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("SetChaptersCovered paniced - %s", r)
+			mprReq.ErrorMsg = fmt.Sprintf("GetChaptersCovered paniced - %s", r)
 		}
-		wg.Done()
 	}()
-	chapterCovered := &ChaptersCovered{TotalChapters: 0, Completed: 0, Missed: 0}
+	chapterCovered := ChaptersCovered{TotalChapters: 0, Completed: 0, Missed: 0}
 	for _, subject := range mprReq.UserDetailsResponse.Subjects {
 		for _, chapter := range subject.ChapterCovered {
 			if chapter.ClassesAttended.TotalClasses > 0 {
@@ -48,18 +33,17 @@ func (summary *SummaryOfLearning) SetChaptersCovered(mprReq *helper.MPRReq, wg *
 		}
 	}
 	chapterCovered.Callout = strings.Replace(callout.GetChapterCoveredCallout(chapterCovered.Completed*100/chapterCovered.TotalChapters), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-	summary.ChaptersCovered = *chapterCovered
+	return chapterCovered
 }
 
-func (summary *SummaryOfLearning) SetClassAttendance(mprReq *helper.MPRReq, wg *sync.WaitGroup) {
+func (sS *SummaryService) GetClassAttendance(mprReq *MPRReq) ClassAttendanceForSummary {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("SetClassAttendance paniced - %s", r)
+			mprReq.ErrorMsg = fmt.Sprintf("GetClassAttendance paniced - %s", r)
 		}
-		wg.Done()
 	}()
-	classAttendance := &ClassAttendanceForSummary{OnTime: 0, TotalClasses: 0, Missed: 0, LateDays: 0}
+	classAttendance := ClassAttendanceForSummary{OnTime: 0, TotalClasses: 0, Missed: 0, LateDays: 0}
 	for _, subject := range mprReq.UserDetailsResponse.Subjects {
 		classAttendance.TotalClasses += subject.TotalClasses
 		classAttendance.LateDays += subject.LateDays
@@ -70,26 +54,27 @@ func (summary *SummaryOfLearning) SetClassAttendance(mprReq *helper.MPRReq, wg *
 		classAttendant := classAttendance.TotalClasses - classAttendance.Missed
 		percentage := float64(classAttendant*100) / float64(classAttendance.TotalClasses)
 		classAttendance.Callout = strings.Replace(callout.GetClassAttendanceCallout(percentage), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-		summary.ClassAttendance = *classAttendance
+		return classAttendance
 	}
-
+	return classAttendance
 }
 
-func (report *ProgressData) SetSummaryPageAssignments(mprReq *helper.MPRReq) {
+func (sS *SummaryService) GetSummaryPageAssignments(mprReq *MPRReq,
+	subjectWisePerformance []SubjectWisePerformance) Assignments {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("SetChaptersCovered paniced - %s", r)
+			mprReq.ErrorMsg = fmt.Sprintf("GetSummaryPageAssignments paniced - %s", r)
 		}
 	}()
-	assignments := &Assignments{
+	assignments := Assignments{
 		TotalAssignments: 0,
 		Completed:        0,
 		Missed:           0,
 		Score:            0,
 		Callout:          "",
 	}
-	for _, subject := range report.SubjectWisePerformance {
+	for _, subject := range subjectWisePerformance {
 		assignments.TotalAssignments += subject.Assignments.TotalAssignments
 		assignments.Completed += subject.Assignments.CompletedAssignments
 		assignments.Score += float64(subject.Assignments.PercentageScore)
@@ -97,7 +82,7 @@ func (report *ProgressData) SetSummaryPageAssignments(mprReq *helper.MPRReq) {
 	coverage := 0.0
 	assignments.Missed = assignments.TotalAssignments - assignments.Completed
 	if assignments.TotalAssignments > 0 {
-		assignments.Score = assignments.Score / float64(len(report.SubjectWisePerformance))
+		assignments.Score = assignments.Score / float64(len(subjectWisePerformance))
 		assignments.Score = math.Round(assignments.Score*100) / 100
 		assignments.CompletedPerc = float64(assignments.Completed) * 100 / float64(assignments.TotalAssignments)
 		assignments.CompletedPerc = math.Round(assignments.CompletedPerc*100) / 100
@@ -105,17 +90,17 @@ func (report *ProgressData) SetSummaryPageAssignments(mprReq *helper.MPRReq) {
 	}
 	postClassCallout := strings.Replace(callout.GetSummaryPostClassCallout(assignments.Score, coverage), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
 	assignments.Callout = postClassCallout
-	report.SummaryOfLearning.Assignments = *assignments
+	return assignments
 }
 
-func (report *ProgressData) SetSummaryLearnerTags(mprReq *helper.MPRReq) {
+func (sS *SummaryService) GetSummaryLearnerTags(mprReq *MPRReq, report ProgressData) LearnerTags {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("SetSummaryLearnerTags paniced - %s", r)
+			mprReq.ErrorMsg = fmt.Sprintf("GetSummaryLearnerTags paniced - %s", r)
 		}
 	}()
-	learnerTags := &LearnerTags{Regularity: "needs_to_improve",
+	learnerTags := LearnerTags{Regularity: "needs_to_improve",
 		Punctuality:          "needs_to_improve",
 		HomeWorkCompletion:   "needs_to_improve",
 		ActiveInClass:        "needs_to_improve",
@@ -150,7 +135,7 @@ func (report *ProgressData) SetSummaryLearnerTags(mprReq *helper.MPRReq) {
 		selfDirectedLearning := float64(preClassCompleted*100) / float64(preClassTotal)
 		learnerTags.SelfDirectedLearning = GetPerformanceByValue(selfDirectedLearning)
 	}
-	report.SummaryOfLearning.LearnerTags = *learnerTags
+	return learnerTags
 
 }
 

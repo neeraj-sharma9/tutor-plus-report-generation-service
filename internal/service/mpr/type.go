@@ -1,9 +1,22 @@
 package mpr
 
 import (
+	"github.com/google/uuid"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/contract"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/helper"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/manager"
 )
+
+type MPRReq struct {
+	JobId               uuid.UUID
+	UserId              int64
+	EpchFrmDate         int64
+	EpchToDate          int64
+	ReqStatus           bool
+	ErrorMsg            string
+	UserDetailsResponse contract.UserDetailsResponse
+	State               string
+}
 
 type ProgressData struct {
 	Cover DateRange `json:"cover"`
@@ -49,7 +62,7 @@ type SummaryOfLearning struct {
 
 type SubjectWisePerformance struct {
 	Subject              string                 `json:"subject"`
-	ClassAttendance      ClassAttendance        `json:"class_attendance"`
+	ClassAttendance      helper.ClassAttendance `json:"class_attendance"`
 	ClassQuiz            ClassQuiz              `json:"class_quiz"`
 	InClassCallout       string                 `json:"in_class_callout"`
 	PostClassCallout     string                 `json:"post_class_callout"`
@@ -148,20 +161,18 @@ type PostAssignments struct {
 }
 
 type SessionWiseBreakdown struct {
-	Session               string    `json:"session"`
-	Attended              bool      `json:"attended"`
-	PreClass              PreClass  `json:"pre_class"`
-	InClass               InClass   `json:"in_class"`
-	PostClass             PostClass `json:"post_class"`
-	*manager.TllmsManager `json:"-"`
+	Session   string    `json:"session"`
+	Attended  bool      `json:"attended"`
+	PreClass  PreClass  `json:"pre_class"`
+	InClass   InClass   `json:"in_class"`
+	PostClass PostClass `json:"post_class"`
 }
 
 type PerformanceTillDate struct {
-	PreRequisite          RequisiteStatus `json:"pre_requisite,omitempty"`
-	PostRequisite         RequisiteStatus `json:"post_requisite,omitempty"`
-	ClassAttendance       ClassAttendance `json:"class_attendance,omitempty"`
-	PollQuestion          PollQuestion    `json:"poll_question,omitempty"`
-	*manager.TllmsManager `json:"-"`
+	PreRequisite    RequisiteStatus        `json:"pre_requisite,omitempty"`
+	PostRequisite   RequisiteStatus        `json:"post_requisite,omitempty"`
+	ClassAttendance helper.ClassAttendance `json:"class_attendance,omitempty"`
+	PollQuestion    helper.PollQuestion    `json:"poll_question,omitempty"`
 }
 
 type Chapters struct {
@@ -202,19 +213,4 @@ type DateRange struct {
 	ToDate        string `json:"to_date"`
 	FromDateEpoch int64  `json:"from_date_epoch"`
 	ToDateEpoch   int64  `json:"to_date_epoch"`
-}
-
-type ClassAttendance struct {
-	TotalClasses int `json:"total_classes,omitempty"`
-	OnTime       int `json:"on_time"`
-	LateDays     int `json:"late_days"`
-	Missed       int `json:"missed"`
-}
-
-type PollQuestion struct {
-	Correct     int `json:"correct"`
-	Incorrect   int `json:"incorrect"`
-	Unattempted int `json:"unattempted"`
-	Attempted   int `json:"total_attempted"`
-	Questions   int `json:"total_questions"`
 }

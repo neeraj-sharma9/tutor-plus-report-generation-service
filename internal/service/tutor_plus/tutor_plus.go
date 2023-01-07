@@ -1,4 +1,4 @@
-package service
+package tutor_plus
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/config"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/constant"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/contract"
-	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/helper"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/logger"
 	"io/ioutil"
 	"net/http"
@@ -22,36 +21,32 @@ func TutorPlusServiceInitializer(config *config.Config) *TutorPlusService {
 	return &TutorPlusService{config: config}
 }
 
-func (tPS *TutorPlusService) GetUserDetails(mprReq *helper.MPRReq) contract.UserDetailsResponse {
+func (tPS *TutorPlusService) GetUserDetails(userId, epchFrmDate, epchToDate int64) (bool, string,
+	string, contract.UserDetailsResponse) {
 	baseUrl := tPS.config.TutorPlusBaseURL
 	params := make(map[string]string)
-	params["user_id"] = strconv.FormatInt(mprReq.UserId, 10)
-	if mprReq.EpchFrmDate > 0 {
-		params["start_date"] = time.Unix(mprReq.EpchFrmDate, 0).Format(constant.TIME_LAYOUT)
+	params["user_id"] = strconv.FormatInt(userId, 10)
+	if epchFrmDate > 0 {
+		params["start_date"] = time.Unix(epchFrmDate, 0).Format(constant.TIME_LAYOUT)
 	}
-	if mprReq.EpchToDate > 0 {
-		params["end_date"] = time.Unix(mprReq.EpchToDate, 0).Format(constant.TIME_LAYOUT)
+	if epchToDate > 0 {
+		params["end_date"] = time.Unix(epchToDate, 0).Format(constant.TIME_LAYOUT)
 	}
 	baseUrl += "/internal_api/neo/progress_report/mt_user_class_detail"
 	apiResponse, err := tPS.GetApiExecutor(baseUrl, params)
 	var userDetails contract.UserDetailsResponse
 	if string(apiResponse) == "{\"data\":{}}" {
-		mprReq.ReqStatus = false
-		mprReq.State = constant.JSON_GENERATION_FAILED
-		mprReq.ErrorMsg = "Insufficient data from Neo classes API"
-		return userDetails
+		return false, constant.JSON_GENERATION_FAILED, "Insufficient data from Neo classes API", userDetails
 	}
 	if err != nil {
-		mprReq.ReqStatus = false
-		mprReq.State = constant.TUTOR_PLUS_DATA_API_5XX_ERROR
-		return userDetails
+		return false, constant.TUTOR_PLUS_DATA_API_5XX_ERROR, "", userDetails
 	}
 	err = json.Unmarshal(apiResponse, &userDetails)
 	if err != nil {
 		logger.Log.Sugar().Errorf("Error unmarshalling userDetails data: %v, response: %+v,"+
 			" baseURL: %v, params: %+v", err, apiResponse, baseUrl, params)
 	}
-	return userDetails
+	return true, "", "", userDetails
 }
 
 func (tPS *TutorPlusService) GetApiExecutor(baseURL string, params map[string]string) ([]byte, error) {

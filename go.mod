@@ -3,7 +3,20 @@ module github.com/neeraj-sharma9/tutor-plus-report-generation-service
 go 1.18
 
 require (
-	github.com/Shopify/sarama v1.37.2 // indirect
+	github.com/Shopify/sarama v1.37.2
+	github.com/google/uuid v1.3.0
+	github.com/spf13/viper v1.14.0
+	github.com/urfave/cli/v2 v2.23.7
+	go.uber.org/fx v1.18.2
+	go.uber.org/zap v1.24.0
+	gocloud.dev v0.27.0
+	gocloud.dev/pubsub/kafkapubsub v0.27.0
+	golang.org/x/tools v0.1.12
+	gorm.io/driver/postgres v1.4.5
+	gorm.io/gorm v1.24.2
+)
+
+require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.3.0 // indirect
@@ -45,18 +58,12 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.14.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
-	github.com/urfave/cli/v2 v2.23.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.15.0 // indirect
-	go.uber.org/fx v1.18.2 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
-	gocloud.dev v0.27.0 // indirect
-	gocloud.dev/pubsub/kafkapubsub v0.27.0 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b // indirect
 	golang.org/x/sync v0.1.0 // indirect
@@ -70,6 +77,4 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/postgres v1.4.5 // indirect
-	gorm.io/gorm v1.24.2 // indirect
 )

@@ -1,10 +1,5 @@
 package helper
 
-import (
-	"github.com/google/uuid"
-	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/contract"
-)
-
 type LookingAhead struct {
 	FromDate       string           `json:"from_date"`
 	ToDate         string           `json:"to_date"`
@@ -29,17 +24,6 @@ type UserInfo struct {
 	PremiumAccountID string `json:"premium_account_id"`
 	UserID           string `json:"user_id"`
 	Grade            int    `json:"grade"`
-}
-
-type MPRReq struct {
-	JobId               uuid.UUID
-	UserId              int64
-	EpchFrmDate         int64
-	EpchToDate          int64
-	ReqStatus           bool
-	ErrorMsg            string
-	UserDetailsResponse contract.UserDetailsResponse
-	State               string
 }
 
 type ClassesModel struct {
@@ -86,4 +70,19 @@ type DifficultyGraph struct {
 	Correct      int    `json:"correct"`
 	Incorrect    int    `json:"incorrect"`
 	NotAttempted int    `json:"not_attempted"`
+}
+
+type ClassAttendance struct {
+	TotalClasses int `json:"total_classes,omitempty"`
+	OnTime       int `json:"on_time"`
+	LateDays     int `json:"late_days"`
+	Missed       int `json:"missed"`
+}
+
+type PollQuestion struct {
+	Correct     int `json:"correct"`
+	Incorrect   int `json:"incorrect"`
+	Unattempted int `json:"unattempted"`
+	Attempted   int `json:"total_attempted"`
+	Questions   int `json:"total_questions"`
 }

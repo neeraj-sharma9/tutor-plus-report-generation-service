@@ -51,10 +51,10 @@ type ChapterCovered struct {
 }
 
 type NeoPerformanceTillDate struct {
-	PreRequisite    []int           `json:"all_pre_requisites_ids,omitempty"`
-	PostRequisite   []int           `json:"all_post_requisite_ids,omitempty"`
-	ClassAttendance ClassAttendance `json:"class_attendance,omitempty"`
-	PollQuestion    PollQuestion    `json:"poll_question,omitempty"`
+	PreRequisite    []int                  `json:"all_pre_requisites_ids,omitempty"`
+	PostRequisite   []int                  `json:"all_post_requisite_ids,omitempty"`
+	ClassAttendance helper.ClassAttendance `json:"class_attendance,omitempty"`
+	PollQuestion    helper.PollQuestion    `json:"poll_question,omitempty"`
 }
 
 type ByjusClassInfo struct {
@@ -68,19 +68,4 @@ type ClassesAttended struct {
 	TotalClasses  int   `json:"total_classes"`
 	TotalAttended int   `json:"total_attended"`
 	Sessions      []int `json:"sessions"`
-}
-
-type ClassAttendance struct {
-	TotalClasses int `json:"total_classes,omitempty"`
-	OnTime       int `json:"on_time"`
-	LateDays     int `json:"late_days"`
-	Missed       int `json:"missed"`
-}
-
-type PollQuestion struct {
-	Correct     int `json:"correct"`
-	Incorrect   int `json:"incorrect"`
-	Unattempted int `json:"unattempted"`
-	Attempted   int `json:"total_attempted"`
-	Questions   int `json:"total_questions"`
 }

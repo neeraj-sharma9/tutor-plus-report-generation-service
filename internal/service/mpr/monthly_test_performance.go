@@ -3,7 +3,12 @@ package mpr
 import (
 	"fmt"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/constant"
-	"golang.org/x/tools/godoc/util"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/contract"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/helper"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/logger"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/manager"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/service/mpr/callout"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/utility"
 	"strings"
 	"sync"
 	"time"
@@ -17,8 +22,13 @@ var sameStateUsers []int64
 var initCityUserList sync.Once
 var initStateUserList sync.Once
 
+type MonthlyTestPerformanceService struct {
+	TllmsManager *manager.TllmsManager
+	MTP          *MonthlyTestPerformance
+}
+
 func getMonthlyTestAssessments(neoTestClassmates map[int][]int64) []int {
-	var assessmentIDs = make(util.Set)
+	var assessmentIDs = make(utility.Set)
 	for key := range neoTestClassmates {
 		assessmentIDs.AddOrUpdate(key)
 	}
@@ -64,46 +74,7 @@ func getSubjectName(grade int, subject string) string {
 	return subject
 }
 
-func (report *ProgressData) SetMonthlyTestPerformance(mprReq *MPRReq, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello SetMonthlyTestPerformance ----%+v", report))
-	defer func() {
-		if r := recover(); r != nil {
-			mprReq.ReqStatus = false
-			mprReq.ErrorMsg = fmt.Sprintf("SetMonthlyTestPerformance paniced - %s", r)
-		}
-		wg.Done()
-	}()
-	totalAssessmentIds := getMonthlyTestAssessments(mprReq.UserDetailsResponse.MonthlyExamClassmates)
-	totalAssessmentIds = assessmentIdsWithoutSubjectiveAssessment(totalAssessmentIds)
-	var attendedAssessments = make(util.Set)
-	attendedAssessments.AddMulti(GetAttendedAssessments(totalAssessmentIds, mprReq)...)
-	var monthlyTests []MonthlyTestPerformance
-	for _, assessmentId := range totalAssessmentIds {
-		var monthlyTestPerformance = &MonthlyTestPerformance{Attended: false, AssessmentId: assessmentId}
-		if attendedAssessments.Has(assessmentId) {
-			monthlyTestPerformance.Attended = true
-		}
-		var waitGroup sync.WaitGroup
-		waitGroup.Add(10)
-		go monthlyTestPerformance.setAssessmentQuestions(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setAssessmentTime(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setAssessmentTimeTaken(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setAssessmentQuestionAttempts(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setChapterWiseAnalysis(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setDifficultyAnalysis(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setSkillAnalysis(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setSubjectWiseScore(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.setPeersPercentageScores(mprReq, assessmentId, &waitGroup)
-		go monthlyTestPerformance.SetRanks(mprReq, assessmentId, &waitGroup)
-		waitGroup.Wait()
-		monthlyTestPerformance.SetMonthlyTestPerformanceCallout(mprReq, assessmentId)
-		monthlyTests = append(monthlyTests, *monthlyTestPerformance)
-	}
-	report.MonthlyTestPerformance = monthlyTests
-}
-
-func (monthlyTest *MonthlyTestPerformance) setAssessmentQuestions(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello setAssessmentQuestions ----%+v", monthlyTest))
+func (mTPS *MonthlyTestPerformanceService) setAssessmentQuestions(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -112,7 +83,7 @@ func (monthlyTest *MonthlyTestPerformance) setAssessmentQuestions(mprReq *MPRReq
 		wg.Done()
 	}()
 	var chapterTestedDetails = make(ChapterTestedDetails)
-	chapterAssessmentQuestions := QueryAssessmentSubjectWiseChapters(assessmentID)
+	chapterAssessmentQuestions := mTPS.QueryAssessmentSubjectWiseChapters(assessmentID)
 	for _, row := range chapterAssessmentQuestions {
 		row.Subject = getSubjectName(mprReq.UserDetailsResponse.UserInfo.Grade, row.Subject)
 		if _, found := chapterTestedDetails[row.Subject]; found {
@@ -122,27 +93,17 @@ func (monthlyTest *MonthlyTestPerformance) setAssessmentQuestions(mprReq *MPRReq
 		} else {
 			chapterTestedDetails[row.Subject] = []string{row.Chapter}
 		}
-		monthlyTest.TotalQuestions += row.Count
+		mTPS.MTP.TotalQuestions += row.Count
 	}
-	monthlyTest.ChapterTestedDetails = chapterTestedDetails
-	monthlyTest.ChapterTested = len(chapterAssessmentQuestions)
-	log.Debugf(fmt.Sprintf("---Bye setAssessmentQuestions ----%+v", monthlyTest))
+	mTPS.MTP.ChapterTestedDetails = chapterTestedDetails
+	mTPS.MTP.ChapterTested = len(chapterAssessmentQuestions)
 }
 
-func QueryAssessmentSubjectWiseChapters(assessmentID int) []ChapterAssessmentQuestions {
-	var assessmentQuestions []ChapterAssessmentQuestions
-	query, args, err := sqlx.In(AssessmentQuestionsQuery,
-		assessmentID)
-	db.CheckError(err, "sqlx-QueryAssessmentSubjectWiseChapters")
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&assessmentQuestions, query, args...)
-	db.CheckError(err, "QueryAssessmentSubjectWiseChapters", query)
-	return assessmentQuestions
+func (mTPS *MonthlyTestPerformanceService) QueryAssessmentSubjectWiseChapters(assessmentID int) []contract.ChapterAssessmentQuestions {
+	return mTPS.TllmsManager.AssessmentQuestionsQuery(assessmentID)
 }
 
-func (monthlyTest *MonthlyTestPerformance) setAssessmentTime(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello setAssessmentTime ----%+v", monthlyTest))
+func (mTPS *MonthlyTestPerformanceService) setAssessmentTime(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -150,29 +111,20 @@ func (monthlyTest *MonthlyTestPerformance) setAssessmentTime(mprReq *MPRReq, ass
 		}
 		wg.Done()
 	}()
-	monthlyTest.TotalExamTime = 60
-	for _, assessment := range QueryAssessmentTime(assessmentID) {
+	mTPS.MTP.TotalExamTime = 60
+	for _, assessment := range mTPS.QueryAssessmentTime(assessmentID) {
 		if assessment.TotalAllowedTime.Valid {
-			monthlyTest.TotalExamTime = int(assessment.TotalAllowedTime.Int32) / 60
+			mTPS.MTP.TotalExamTime = int(assessment.TotalAllowedTime.Int32) / 60
 		}
 	}
-	monthlyTest.NextExamDate = mprReq.UserDetailsResponse.NextMonthlyExamDate
+	mTPS.MTP.NextExamDate = mprReq.UserDetailsResponse.NextMonthlyExamDate
 }
 
-func QueryAssessmentTime(assessmentID int) []AssessmentTime {
-	var assessmentTime []AssessmentTime
-	query, args, err := sqlx.In(AssessmentTimeQuery,
-		assessmentID)
-	db.CheckError(err, "sqlx-QueryAssessmentTime")
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&assessmentTime, query, args...)
-	db.CheckError(err, "QueryAssessmentTime", query)
-	return assessmentTime
+func (mTPS *MonthlyTestPerformanceService) QueryAssessmentTime(assessmentID int) []contract.AssessmentTime {
+	return mTPS.TllmsManager.AssessmentTimeQuery(assessmentID)
 }
 
-func (monthlyTest *MonthlyTestPerformance) setAssessmentTimeTaken(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello setAssessmentTimeTaken ----%+v", monthlyTest))
+func (mTPS *MonthlyTestPerformanceService) setAssessmentTimeTaken(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -180,47 +132,36 @@ func (monthlyTest *MonthlyTestPerformance) setAssessmentTimeTaken(mprReq *MPRReq
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		for _, assessment := range QueryAssessmentTimeTaken(assessmentID, mprReq) {
+	if mTPS.MTP.Attended {
+		for _, assessment := range mTPS.QueryAssessmentTimeTaken(assessmentID, mprReq) {
 			if assessment.ExamDate.Valid {
-				monthlyTest.ExamDate = assessment.ExamDate.String
+				mTPS.MTP.ExamDate = assessment.ExamDate.String
 			}
 			if assessment.TimeTaken.Valid {
-				monthlyTest.TimeTaken = int(assessment.TimeTaken.Int32)
+				mTPS.MTP.TimeTaken = int(assessment.TimeTaken.Int32)
 			}
 			if assessment.PercentageScore.Valid {
-				monthlyTest.PercentageScores.User = assessment.PercentageScore.Float64
+				mTPS.MTP.PercentageScores.User = assessment.PercentageScore.Float64
 			}
 		}
 	} else {
 		for _, subject := range mprReq.UserDetailsResponse.Subjects {
 			for _, class := range subject.Classes {
-				emptyTestRequisite := TestRequisite{}
+				emptyTestRequisite := helper.TestRequisite{}
 				if class.TestRequisites != emptyTestRequisite && class.TestRequisites.Assessment == assessmentID {
-					monthlyTest.ExamDate = class.TestRequisites.SessionDate
+					mTPS.MTP.ExamDate = class.TestRequisites.SessionDate
 					break
 				}
 			}
 		}
 	}
-	log.Debugf(fmt.Sprintf("---Bye setAssessmentTimeTaken ----%+v", monthlyTest))
 }
 
-func QueryAssessmentTimeTaken(assessmentID int, mprReq *MPRReq) []AssessmentAttemptInfo {
-	var assessmentInfo []AssessmentAttemptInfo
-	query, args, err := sqlx.In(AssessmentAttemptDetails,
-		mprReq.UserId,
-		assessmentID)
-	db.CheckError(err, "sqlx-QueryAssessmentTimeTaken")
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&assessmentInfo, query, args...)
-	db.CheckError(err, "QueryAssessmentTimeTaken", query)
-	return assessmentInfo
+func (mTPS *MonthlyTestPerformanceService) QueryAssessmentTimeTaken(assessmentID int, mprReq *MPRReq) []contract.AssessmentAttemptInfo {
+	return mTPS.TllmsManager.AssessmentAttemptDetails(assessmentID, mprReq.UserId)
 }
 
-func (monthlyTest *MonthlyTestPerformance) setAssessmentQuestionAttempts(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello setAssessmentQuestionAttempts ----%+v", monthlyTest))
+func (mTPS *MonthlyTestPerformanceService) setAssessmentQuestionAttempts(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -228,35 +169,25 @@ func (monthlyTest *MonthlyTestPerformance) setAssessmentQuestionAttempts(mprReq 
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		for _, row := range QueryAssessmentQuestionAttempts(assessmentID, mprReq) {
+	if mTPS.MTP.Attended {
+		for _, row := range mTPS.QueryAssessmentQuestionAttempts(assessmentID, mprReq) {
 			if row.IsCorrect.Valid {
 				if strings.ToLower(row.IsCorrect.String) == "true" {
-					monthlyTest.CorrectAnswer += row.Count
-					monthlyTest.QuestionAttempted += row.Count
+					mTPS.MTP.CorrectAnswer += row.Count
+					mTPS.MTP.QuestionAttempted += row.Count
 				} else if strings.ToLower(row.IsCorrect.String) == "false" {
-					monthlyTest.QuestionAttempted += row.Count
+					mTPS.MTP.QuestionAttempted += row.Count
 				}
 			}
 		}
 	}
-	log.Debugf(fmt.Sprintf("---Bye setAssessmentQuestionAttempts ----%+v", monthlyTest))
 }
 
-func QueryAssessmentQuestionAttempts(assessmentID int, mprReq *MPRReq) []QuestionsAttempted {
-	var questionsAttempted []QuestionsAttempted
-	query, args, err := sqlx.In(AssessmentQuestionsAttempts,
-		assessmentID, mprReq.UserId)
-	db.CheckError(err, "sqlx-QueryAssessmentQuestionAttempts")
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&questionsAttempted, query, args...)
-	db.CheckError(err, "QueryAssessmentQuestionAttempts", query)
-	return questionsAttempted
+func (mTPS *MonthlyTestPerformanceService) QueryAssessmentQuestionAttempts(assessmentID int, mprReq *MPRReq) []contract.QuestionsAttempted {
+	return mTPS.TllmsManager.AssessmentQuestionsAttempts(assessmentID, mprReq.UserId)
 }
 
-func GetChapterPerformanceCallout(assessmentId int, chapterName string, mprReq *MPRReq) float64 {
-	log.Debugf("----hello GetChapterPerformanceCallout---")
+func (mTPS *MonthlyTestPerformanceService) GetChapterPerformanceCallout(assessmentId int, chapterName string, mprReq *MPRReq) float64 {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -264,8 +195,7 @@ func GetChapterPerformanceCallout(assessmentId int, chapterName string, mprReq *
 		}
 	}()
 	var rankMap map[int64]float64
-	dbData := QueryChapterWisePerformanceCallout(assessmentId, chapterName)
-	log.Debugf(fmt.Sprintf("DB response %+v, %+v, %+v", assessmentId, chapterName, dbData))
+	dbData := mTPS.QueryChapterWisePerformanceCallout(assessmentId, chapterName)
 	rankMap = make(map[int64]float64, len(dbData))
 	for _, item := range dbData {
 		if item.UserId.Valid {
@@ -276,12 +206,10 @@ func GetChapterPerformanceCallout(assessmentId int, chapterName string, mprReq *
 	if per, found := rankMap[mprReq.UserId]; found {
 		percentile = per
 	}
-	log.Debugf("----bye bye GetChapterPerformanceCallout---")
 	return percentile
 }
 
-func (monthlyTest *MonthlyTestPerformance) setChapterWiseAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf(fmt.Sprintf("---Hello setChapterWiseAnalysis ----%+v", monthlyTest))
+func (mTPS *MonthlyTestPerformanceService) setChapterWiseAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -289,15 +217,13 @@ func (monthlyTest *MonthlyTestPerformance) setChapterWiseAnalysis(mprReq *MPRReq
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
+	if mTPS.MTP.Attended {
 		var chapterWiseAnalysis []ChapterWiseAnalysis
-		subjectDataMap := QueryChapterWiseData(assessmentID, mprReq)
-		log.Debugf(fmt.Sprintf("setChapterWiseAnalysis map of subject wise chapters: %+v", subjectDataMap))
+		subjectDataMap := mTPS.QueryChapterWiseData(assessmentID, mprReq)
 		for subject, data := range subjectDataMap {
 			var chapters []Chapters
 			for _, chapter := range data {
-				log.Debugf(fmt.Sprintf("Getting data for chapter : %+v", chapter))
-				percentile := GetChapterPerformanceCallout(assessmentID, chapter.Chapter, mprReq)
+				percentile := mTPS.GetChapterPerformanceCallout(assessmentID, chapter.Chapter, mprReq)
 				if percentile >= 50.0 {
 					chapter.Direction = "up"
 					chapter.PerformanceCallout = fmt.Sprintf(ChapterPerformanceCalloutTemplateAhead, int(percentile+0.5))
@@ -310,24 +236,13 @@ func (monthlyTest *MonthlyTestPerformance) setChapterWiseAnalysis(mprReq *MPRReq
 			}
 			chapterWiseAnalysis = append(chapterWiseAnalysis, ChapterWiseAnalysis{Subject: subject, Chapters: chapters})
 		}
-		monthlyTest.ChapterWiseAnalysis = chapterWiseAnalysis
+		mTPS.MTP.ChapterWiseAnalysis = chapterWiseAnalysis
 	}
-	log.Debugf(fmt.Sprintf("---Bye setChapterWiseAnalysis ----%+v", monthlyTest))
 }
 
-func QueryChapterWiseData(assessmentId int, mprReq *MPRReq) map[string][]Chapters {
-	query, args, err := sqlx.In(ChapterWisePerformanceQuery,
-		assessmentId,
-		mprReq.UserId)
-	db.CheckError(err, "sqlx-ChapterWisePerformanceQuery")
-
-	var testInfos []ChapterWisePerformanceCursor
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&testInfos, query, args...)
+func (mTPS *MonthlyTestPerformanceService) QueryChapterWiseData(assessmentId int, mprReq *MPRReq) map[string][]Chapters {
+	testInfos := mTPS.TllmsManager.ChapterWisePerformanceQuery(assessmentId, mprReq.UserId)
 	dgSubjectMap := map[string][]Chapters{}
-	db.CheckError(err, "QueryChapterWiseData")
 
 	for _, row := range testInfos {
 		row.Subject = getSubjectName(mprReq.UserDetailsResponse.UserInfo.Grade, row.Subject)
@@ -359,25 +274,11 @@ func QueryChapterWiseData(assessmentId int, mprReq *MPRReq) map[string][]Chapter
 	return dgSubjectMap
 }
 
-func QueryChapterWisePerformanceCallout(assessmentId int, chapterName string) []ChapterWiseRankCursor {
-
-	query, args, err := sqlx.In(ChapterWiseRankQuery,
-		assessmentId,
-		chapterName)
-	db.CheckError(err, "sqlx-ChapterWiseRankQuery")
-
-	var chapterWiseRankInfo []ChapterWiseRankCursor
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&chapterWiseRankInfo, query, args...)
-
-	db.CheckError(err, "QueryChapterWisePerformanceCallout")
-
-	return chapterWiseRankInfo
+func (mTPS *MonthlyTestPerformanceService) QueryChapterWisePerformanceCallout(assessmentId int, chapterName string) []contract.ChapterWiseRankCursor {
+	return mTPS.TllmsManager.ChapterWiseRankQuery(assessmentId, chapterName)
 }
 
-func (monthlyTest *MonthlyTestPerformance) setDifficultyAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf("----hello setDifficultyAnalysis ----")
+func (mTPS *MonthlyTestPerformanceService) setDifficultyAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -385,41 +286,28 @@ func (monthlyTest *MonthlyTestPerformance) setDifficultyAnalysis(mprReq *MPRReq,
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		difficultyList := QueryDifficultyData(assessmentID, mprReq)
-		log.Debugf(fmt.Sprintf("setDifficultyAnalysis ::::: difficultyList %+v ", difficultyList))
+	if mTPS.MTP.Attended {
+		difficultyList := mTPS.QueryDifficultyData(assessmentID, mprReq)
 		difficultyAnalysis := DifficultyAnalysis{}
 		difficultyAnalysis.DifficultyGraph = difficultyList
 		difficultyAnalysis.CallOut = strings.Replace(callout.GetDifficultyAnalysisCallout(difficultyList), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-		monthlyTest.DifficultyAnalysis = difficultyAnalysis
+		mTPS.MTP.DifficultyAnalysis = difficultyAnalysis
 	}
-	log.Debugf("----bye bye setDifficultyAnalysis ----")
 }
 
-func QueryDifficultyData(assessmentId int, mprReq *MPRReq) []util.DifficultyGraph {
-	query, args, err := sqlx.In(DifficultyGraphQuery,
-		assessmentId,
-		mprReq.UserId)
-	db.CheckError(err, "sqlx-DifficultyGraphQuery")
-
-	var testInfos []DifficultySkillCursor
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&testInfos, query, args...)
-	db.CheckError(err, "QueryDifficultyData")
-	var dgList []util.DifficultyGraph
-	log.Debugf("QueryDifficultyData: DB result: %+v", testInfos)
+func (mTPS *MonthlyTestPerformanceService) QueryDifficultyData(assessmentId int, mprReq *MPRReq) []helper.DifficultyGraph {
+	testInfos := mTPS.TllmsManager.DifficultyGraphQuery(assessmentId, mprReq.UserId)
+	var dgList []helper.DifficultyGraph
 	for _, row := range testInfos {
 		if row.Label.Valid {
-			var dg *util.DifficultyGraph
+			var dg *helper.DifficultyGraph
 			for idx, difficulty := range dgList {
 				if difficulty.Label == row.Label.String {
 					dg = &dgList[idx]
 				}
 			}
 			if dg == nil {
-				dgList = append(dgList, util.DifficultyGraph{Label: row.Label.String})
+				dgList = append(dgList, helper.DifficultyGraph{Label: row.Label.String})
 				dg = &dgList[len(dgList)-1]
 			}
 			if row.IsCorrect.Valid {
@@ -438,8 +326,7 @@ func QueryDifficultyData(assessmentId int, mprReq *MPRReq) []util.DifficultyGrap
 	return dgList
 }
 
-func (monthlyTest *MonthlyTestPerformance) setSkillAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf("----hello setSkillAnalysis ----")
+func (mTPS *MonthlyTestPerformanceService) setSkillAnalysis(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -447,41 +334,28 @@ func (monthlyTest *MonthlyTestPerformance) setSkillAnalysis(mprReq *MPRReq, asse
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		skillList := QuerySkillData(assessmentID, mprReq)
-		log.Debugf(fmt.Sprintf("setSkillAnalysis ::::: skillList %+v ", skillList))
+	if mTPS.MTP.Attended {
+		skillList := mTPS.QuerySkillData(assessmentID, mprReq)
 		skillAnalysis := SkillAnalysis{}
 		skillAnalysis.SkillAnalysisGraph = skillList
 		skillAnalysis.CallOut = strings.Replace(callout.GetSkillAnalysisCallout(skillList), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-		monthlyTest.SkillAnalysis = skillAnalysis
+		mTPS.MTP.SkillAnalysis = skillAnalysis
 	}
-	log.Debugf("----bye bye setSkillAnalysis ----")
 }
 
-func QuerySkillData(assessmentId int, mprReq *MPRReq) []util.SkillAnalysisGraph {
-	query, args, err := sqlx.In(SkillAnalysisQuery,
-		assessmentId,
-		mprReq.UserId)
-	db.CheckError(err, "sqlx-DifficultyGraphQuery")
-
-	var testInfos []DifficultySkillCursor
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&testInfos, query, args...)
-	db.CheckError(err, "QuerySkillData")
-	var skillList []util.SkillAnalysisGraph
-	log.Debugf("QuerySkillData: DB result: %+v", testInfos)
+func (mTPS *MonthlyTestPerformanceService) QuerySkillData(assessmentId int, mprReq *MPRReq) []helper.SkillAnalysisGraph {
+	testInfos := mTPS.TllmsManager.SkillAnalysisQuery(assessmentId, mprReq.UserId)
+	var skillList []helper.SkillAnalysisGraph
 	for _, row := range testInfos {
 		if row.Label.Valid {
-			var skill *util.SkillAnalysisGraph
+			var skill *helper.SkillAnalysisGraph
 			for idx, _skill := range skillList {
 				if _skill.Label == row.Label.String {
 					skill = &skillList[idx]
 				}
 			}
 			if skill == nil {
-				skillList = append(skillList, util.SkillAnalysisGraph{Label: row.Label.String})
+				skillList = append(skillList, helper.SkillAnalysisGraph{Label: row.Label.String})
 				skill = &skillList[len(skillList)-1]
 			}
 			if row.IsCorrect.Valid {
@@ -500,8 +374,7 @@ func QuerySkillData(assessmentId int, mprReq *MPRReq) []util.SkillAnalysisGraph 
 	return skillList
 }
 
-func (monthlyTest *MonthlyTestPerformance) setSubjectWiseScore(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf("----hello setSubjectWiseScore ----")
+func (mTPS *MonthlyTestPerformanceService) setSubjectWiseScore(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -513,9 +386,9 @@ func (monthlyTest *MonthlyTestPerformance) setSubjectWiseScore(mprReq *MPRReq, a
 		Correct int
 		Total   int
 	}
-	if monthlyTest.Attended {
+	if mTPS.MTP.Attended {
 		subjectQuestionsMap := map[string]SubjectWiseQuestions{}
-		for _, subjectAttemptedQuestion := range QuerySubjectWiseScore(assessmentID, mprReq) {
+		for _, subjectAttemptedQuestion := range mTPS.QuerySubjectWiseScore(assessmentID, mprReq) {
 			if subjectAttemptedQuestion.Subject.Valid {
 				subjectName := getSubjectName(mprReq.UserDetailsResponse.UserInfo.Grade, subjectAttemptedQuestion.Subject.String)
 				if _, found := subjectQuestionsMap[subjectName]; !found {
@@ -548,28 +421,16 @@ func (monthlyTest *MonthlyTestPerformance) setSubjectWiseScore(mprReq *MPRReq, a
 			}
 			subjectWiseScorePercentage = append(subjectWiseScorePercentage, SubjectWiseScore{subject: fmt.Sprintf("%v", score)})
 		}
-		monthlyTest.SubjectChapterCallout = strings.Replace(callout.GetSubjectChapterCallout(countGt80, countLt40, len(subjectWiseScorePercentage)), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-		monthlyTest.SubjectWiseScore = subjectWiseScorePercentage
+		mTPS.MTP.SubjectChapterCallout = strings.Replace(callout.GetSubjectChapterCallout(countGt80, countLt40, len(subjectWiseScorePercentage)), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
+		mTPS.MTP.SubjectWiseScore = subjectWiseScorePercentage
 	}
 }
 
-func QuerySubjectWiseScore(assessmentId int, mprReq *MPRReq) []SubjectAttemptsCount {
-	query, args, err := sqlx.In(SubjectWiseScoreQuery,
-		assessmentId,
-		mprReq.UserId)
-	db.CheckError(err, "sqlx-QuerySubjectWiseScore")
-
-	var testInfos []SubjectAttemptsCount
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&testInfos, query, args...)
-	db.CheckError(err, "QuerySubjectWiseScore")
-	return testInfos
+func (mTPS *MonthlyTestPerformanceService) QuerySubjectWiseScore(assessmentId int, mprReq *MPRReq) []contract.SubjectAttemptsCount {
+	return mTPS.TllmsManager.SubjectWiseScoreQuery(assessmentId, mprReq.UserId)
 }
 
-func (monthlyTest *MonthlyTestPerformance) setPeersPercentageScores(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf("----hello setPeersPercentageScores ----")
+func (mTPS *MonthlyTestPerformanceService) setPeersPercentageScores(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -577,209 +438,129 @@ func (monthlyTest *MonthlyTestPerformance) setPeersPercentageScores(mprReq *MPRR
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		var waitGroup sync.WaitGroup
-		waitGroup.Add(4)
-		go monthlyTest.PercentageScores.QueryClassAverage(assessmentID, mprReq, &waitGroup)
-		go monthlyTest.PercentageScores.QueryCityAverage(assessmentID, mprReq, &waitGroup)
-		go monthlyTest.PercentageScores.QueryStateAverage(assessmentID, mprReq, &waitGroup)
-		go monthlyTest.PercentageScores.QueryNationalAverage(assessmentID, mprReq, &waitGroup)
-		waitGroup.Wait()
+	var percentageScore PercentageScores
+	if mTPS.MTP.Attended {
+		percentageScore.Class = mTPS.QueryClassAverage(assessmentID, mprReq)
+		percentageScore.City = mTPS.QueryCityAverage(assessmentID, mprReq)
+		percentageScore.State = mTPS.QueryStateAverage(assessmentID, mprReq)
+		percentageScore.National = mTPS.QueryNationalAverage(assessmentID, mprReq)
 	}
-	log.Debugf("----Bye setPeersPercentageScores ---- %+v", monthlyTest.PercentageScores)
+	mTPS.MTP.PercentageScores = percentageScore
 }
 
-func (percentageScores *PercentageScores) QueryClassAverage(assessmentID int, mprReq *MPRReq, wg *sync.WaitGroup) {
-	log.Debugf("----hello QueryClassAverage ----")
+func (mTPS *MonthlyTestPerformanceService) QueryClassAverage(assessmentID int, mprReq *MPRReq) float64 {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
 			mprReq.ErrorMsg = fmt.Sprintf("QueryClassAverage paniced %d - %s", assessmentID, r)
 		}
-		wg.Done()
 	}()
 	userList := mprReq.UserDetailsResponse.MonthlyExamClassmates[assessmentID]
+	class := 0.0
 	if len(userList) > 0 {
-		query, args, err := sqlx.In(MultiUserAverageScoreQuery, userList, assessmentID)
-		db.CheckError(err, "sqlx-QueryClassAverage")
-
-		var testInfos []MultiUserAverageScore
-		query = db.GetPGDbReader().Rebind(query)
-
-		err = db.GetPGDbReader().
-			Select(&testInfos, query, args...)
-		db.CheckError(err, "QueryClassAverage")
+		testInfos := mTPS.TllmsManager.MultiUserAverageScoreQuery(assessmentID, userList)
 		if len(testInfos) > 0 {
 			if testInfos[0].Average.Valid {
-				percentageScores.Class = testInfos[0].Average.Float64
+				class = testInfos[0].Average.Float64
 			}
 		}
 	}
+	return class
 }
 
-func (percentageScores *PercentageScores) QueryCityAverage(assessmentID int, mprReq *MPRReq, wg *sync.WaitGroup) {
-	log.Debugf("----hello QueryCityAverage ----")
+func (mTPS *MonthlyTestPerformanceService) QueryCityAverage(assessmentID int, mprReq *MPRReq) float64 {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
 			mprReq.ErrorMsg = fmt.Sprintf("QueryCityAverage paniced %d - %s", assessmentID, r)
 		}
-		wg.Done()
 	}()
-	userList := getSameCityUsers(mprReq)
+	userList := mTPS.getSameCityUsers(mprReq)
+	city := 0.0
 	if len(userList) > 0 {
-		query, args, err := sqlx.In(MultiUserAverageScoreQuery, userList, assessmentID)
-		db.CheckError(err, "sqlx-QueryCityAverage")
-
-		var testInfos []MultiUserAverageScore
-		query = db.GetPGDbReader().Rebind(query)
-
-		err = db.GetPGDbReader().
-			Select(&testInfos, query, args...)
-		db.CheckError(err, "QueryCityAverage")
+		testInfos := mTPS.TllmsManager.MultiUserAverageScoreQuery(assessmentID, userList)
 		if len(testInfos) > 0 {
 			if testInfos[0].Average.Valid {
-				percentageScores.City = testInfos[0].Average.Float64
+				city = testInfos[0].Average.Float64
 			}
 		}
 	}
-	log.Debugf(fmt.Sprintf("----Bye QueryCityAverage ---- %+v", percentageScores))
+	return city
 }
 
-func (percentageScores *PercentageScores) QueryStateAverage(assessmentID int, mprReq *MPRReq, wg *sync.WaitGroup) {
-	log.Debugf("----hello QueryStateAverage ----")
+func (mTPS *MonthlyTestPerformanceService) QueryStateAverage(assessmentID int, mprReq *MPRReq) float64 {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
 			mprReq.ErrorMsg = fmt.Sprintf("QueryStateAverage paniced %d - %s", assessmentID, r)
 		}
-		wg.Done()
 	}()
-	userList := getSameStateUsers(mprReq)
+	userList := mTPS.getSameStateUsers(mprReq)
+	state := 0.0
 	if len(userList) > 0 {
-		query, args, err := sqlx.In(MultiUserAverageScoreQuery, userList, assessmentID)
-		db.CheckError(err, "sqlx-QueryStateAverage")
-
-		var testInfos []MultiUserAverageScore
-		query = db.GetPGDbReader().Rebind(query)
-
-		err = db.GetPGDbReader().
-			Select(&testInfos, query, args...)
-		db.CheckError(err, "QueryStateAverage")
+		testInfos := mTPS.TllmsManager.MultiUserAverageScoreQuery(assessmentID, userList)
 		if len(testInfos) > 0 {
 			if testInfos[0].Average.Valid {
-				percentageScores.State = testInfos[0].Average.Float64
+				state = testInfos[0].Average.Float64
 			}
 		}
 	}
-	log.Debugf(fmt.Sprintf("----Bye QueryStateAverage ---- %+v", percentageScores))
+	return state
 }
 
-func (percentageScores *PercentageScores) QueryNationalAverage(assessmentID int, mprReq *MPRReq, wg *sync.WaitGroup) {
-	log.Debugf("----hello QueryNationalAverage ----")
+func (mTPS *MonthlyTestPerformanceService) QueryNationalAverage(assessmentID int, mprReq *MPRReq) float64 {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
 			mprReq.ErrorMsg = fmt.Sprintf("QueryNationalAverage paniced %d - %s", assessmentID, r)
 		}
-		wg.Done()
 	}()
 	userList := mprReq.UserDetailsResponse.SameBatchUserList
+	national := 0.0
 	if len(userList) > 0 {
-		query, args, err := sqlx.In(MultiUserAverageScoreQuery, userList, assessmentID)
-		db.CheckError(err, "sqlx-QueryNationalAverage")
-
-		var testInfos []MultiUserAverageScore
-		query = db.GetPGDbReader().Rebind(query)
-
-		err = db.GetPGDbReader().
-			Select(&testInfos, query, args...)
-		db.CheckError(err, "QueryNationalAverage")
+		testInfos := mTPS.TllmsManager.MultiUserAverageScoreQuery(assessmentID, userList)
 		if len(testInfos) > 0 {
 			if testInfos[0].Average.Valid {
-				percentageScores.National = testInfos[0].Average.Float64
+				national = testInfos[0].Average.Float64
 			}
 		}
 	}
+	return national
 }
 
-func getSameCityUsers(mprReq *MPRReq) []int64 {
+func (mTPS *MonthlyTestPerformanceService) getSameCityUsers(mprReq *MPRReq) []int64 {
 	initCityUserList.Do(func() {
 		var err error
-		sameCityUsers, err = QuerySameCityUsers(mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
+		sameCityUsers, err = mTPS.QuerySameCityUsers(mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
 		if err != nil {
-			log.GetLogger().Errorln(err)
+			logger.Log.Sugar().Errorln(err)
 		}
 	})
 	return sameCityUsers
 }
 
-func QuerySameCityUsers(userId int64, maxUserList []int64) ([]int64, error) {
-	var userList []UserList
-	query, args, err := sqlx.In(CityUserListQuery,
-		userId, maxUserList)
-	db.CheckError(err, "sqlx-CityUserListQuery")
-
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&userList, query, args...)
-	db.CheckError(err, "QuerySameCityUsers")
-	var result []int64
-	if len(userList) > 0 {
-		for _, item := range userList {
-			result = append(result, item.UserId)
-		}
-	}
-	return result, err
+func (mTPS *MonthlyTestPerformanceService) QuerySameCityUsers(userId int64, maxUserList []int64) ([]int64, error) {
+	return mTPS.TllmsManager.CityUserListQuery(userId, maxUserList), nil
 }
 
-func getSameStateUsers(mprReq *MPRReq) []int64 {
+func (mTPS *MonthlyTestPerformanceService) getSameStateUsers(mprReq *MPRReq) []int64 {
 	initStateUserList.Do(func() {
 		var err error
-		sameStateUsers, err = QuerySameStateUsers(mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
+		sameStateUsers, err = mTPS.QuerySameStateUsers(mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
 		if err != nil {
-			log.GetLogger().Fatal(err)
+			logger.Log.Sugar().Fatal(err)
 		}
 	})
 	return sameStateUsers
 }
 
-func QuerySameStateUsers(userId int64, maxUserList []int64) ([]int64, error) {
-	var userList []UserList
-	query, args, err := sqlx.In(StateUserListQuery,
-		userId, maxUserList)
-	db.CheckError(err, "sqlx-StateUserListQuery")
-
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&userList, query, args...)
-	db.CheckError(err, "QuerySameStateUsers")
-	var result []int64
-	if len(userList) > 0 {
-		for _, item := range userList {
-			result = append(result, item.UserId)
-		}
-	}
-	return result, err
+func (mTPS *MonthlyTestPerformanceService) QuerySameStateUsers(userId int64, maxUserList []int64) ([]int64, error) {
+	return mTPS.TllmsManager.StateUserListQuery(userId, maxUserList), nil
 }
 
-func QueryUserRank(assessmentID int, userId int64, userList []int64) int {
-	var userRank []UserRank
+func (mTPS *MonthlyTestPerformanceService) QueryUserRank(assessmentID int, userId int64, userList []int64) int {
+	userRank := mTPS.TllmsManager.RankQuery(assessmentID, userId, userList)
 	rank := 0
-	if len(userList) == 0 {
-		return rank
-	}
-	query, args, err := sqlx.In(RankQuery,
-		assessmentID, userList, userId)
-	db.CheckError(err, "sqlx-RankQuery")
-
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&userRank, query, args...)
-	db.CheckError(err, "QueryUserRank")
 	if len(userRank) > 0 {
 		if userRank[0].Rank.Valid {
 			rank = int(userRank[0].Rank.Int64)
@@ -788,27 +569,18 @@ func QueryUserRank(assessmentID int, userId int64, userList []int64) int {
 	return rank
 }
 
-func QueryUserCity(userId int64) string {
-	var userRank []UserCity
-	rank := ""
-	query, args, err := sqlx.In(UserCityQuery, userId)
-	db.CheckError(err, "sqlx-UserCityQuery")
-
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&userRank, query, args...)
-	db.CheckError(err, "QueryUserCity")
-	if len(userRank) > 0 {
-		if userRank[0].City.Valid {
-			rank = userRank[0].City.String
+func (mTPS *MonthlyTestPerformanceService) QueryUserCity(userId int64) string {
+	userCity := mTPS.TllmsManager.UserCityQuery(userId)
+	city := ""
+	if len(userCity) > 0 {
+		if userCity[0].City.Valid {
+			city = userCity[0].City.String
 		}
 	}
-	return rank
+	return city
 }
 
-func (monthlyTest *MonthlyTestPerformance) SetRanks(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
-	log.Debugf("----hello SetRanks ----")
+func (mTPS *MonthlyTestPerformanceService) SetRanks(mprReq *MPRReq, assessmentID int, wg *sync.WaitGroup) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
@@ -816,46 +588,35 @@ func (monthlyTest *MonthlyTestPerformance) SetRanks(mprReq *MPRReq, assessmentID
 		}
 		wg.Done()
 	}()
-	if monthlyTest.Attended {
-		monthlyTest.Ranks.National = QueryUserRank(assessmentID, mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
-		monthlyTest.Ranks.State = QueryUserRank(assessmentID, mprReq.UserId, getSameStateUsers(mprReq))
-		monthlyTest.Ranks.City = QueryUserRank(assessmentID, mprReq.UserId, getSameCityUsers(mprReq))
-		monthlyTest.Ranks.Class = QueryUserRank(assessmentID, mprReq.UserId, mprReq.UserDetailsResponse.MonthlyExamClassmates[assessmentID])
-		monthlyTest.City = QueryUserCity(mprReq.UserId)
+	if mTPS.MTP.Attended {
+		mTPS.MTP.Ranks.National = mTPS.QueryUserRank(assessmentID, mprReq.UserId, mprReq.UserDetailsResponse.SameBatchUserList)
+		mTPS.MTP.Ranks.State = mTPS.QueryUserRank(assessmentID, mprReq.UserId, mTPS.getSameStateUsers(mprReq))
+		mTPS.MTP.Ranks.City = mTPS.QueryUserRank(assessmentID, mprReq.UserId, mTPS.getSameCityUsers(mprReq))
+		mTPS.MTP.Ranks.Class = mTPS.QueryUserRank(assessmentID, mprReq.UserId, mprReq.UserDetailsResponse.MonthlyExamClassmates[assessmentID])
+		mTPS.MTP.City = mTPS.QueryUserCity(mprReq.UserId)
 	}
-	log.Debugf(fmt.Sprintf("----Bye SetRanks ---- %+v", monthlyTest))
 }
 
-func (monthlyTest *MonthlyTestPerformance) SetMonthlyTestPerformanceCallout(mprReq *MPRReq, assessmentID int) {
-	log.Debugf("----hello SetMonthlyTestPerformanceCallout ----")
+func (mTPS *MonthlyTestPerformanceService) SetMonthlyTestPerformanceCallout(mprReq *MPRReq, assessmentID int) {
 	defer func() {
 		if r := recover(); r != nil {
 			mprReq.ReqStatus = false
 			mprReq.ErrorMsg = fmt.Sprintf("SetMonthlyTestPerformanceCallout paniced %d - %s", assessmentID, r)
 		}
 	}()
-	monthlyTestPerformanceCallout := strings.Replace(callout.GetMonthlyTestPerformanceCallout(monthlyTest.Ranks.National, monthlyTest.Ranks.State,
-		monthlyTest.Ranks.City, monthlyTest.Ranks.Class, monthlyTest.PercentageScores.User, monthlyTest.PercentageScores.Class,
-		monthlyTest.Attended), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
-	monthlyTestPerformanceCallout = strings.Replace(monthlyTestPerformanceCallout, "<City>", monthlyTest.City, -1)
-	monthlyTest.MonthlyTestCallout = monthlyTestPerformanceCallout
-	log.Debugf(fmt.Sprintf("----Bye SetMonthlyTestPerformanceCallout ---- %+v", monthlyTest))
+	monthlyTestPerformanceCallout := strings.Replace(callout.GetMonthlyTestPerformanceCallout(mTPS.MTP.Ranks.National, mTPS.MTP.Ranks.State,
+		mTPS.MTP.Ranks.City, mTPS.MTP.Ranks.Class, mTPS.MTP.PercentageScores.User, mTPS.MTP.PercentageScores.Class,
+		mTPS.MTP.Attended), "<User>", mprReq.UserDetailsResponse.UserInfo.Name, -1)
+	monthlyTestPerformanceCallout = strings.Replace(monthlyTestPerformanceCallout, "<City>", mTPS.MTP.City, -1)
+	mTPS.MTP.MonthlyTestCallout = monthlyTestPerformanceCallout
 }
 
-func GetAttendedAssessments(assessmentList []int, mprReq *MPRReq) []int {
+func (mTPS *MonthlyTestPerformanceService) GetAttendedAssessments(assessmentList []int, mprReq *MPRReq) []int {
 	var result []int
-	var assessmentAttended []AttendedAssessment
 	fromDate := time.Unix(mprReq.EpchFrmDate-constant.IST_OFFSET, 0).Format(constant.TIME_LAYOUT)
 	toDate := time.Unix(mprReq.EpchToDate-constant.IST_OFFSET, 0).Format(constant.TIME_LAYOUT)
-	log.GetLogger().Infoln("GetAttendedAssessments:: ", fromDate, toDate)
-	query, args, err := sqlx.In(AssessmentsAttended, mprReq.UserId, assessmentList, fromDate, toDate)
-	db.CheckError(err, "sqlx-GetAttendedAssessments")
-
-	query = db.GetPGDbReader().Rebind(query)
-
-	err = db.GetPGDbReader().
-		Select(&assessmentAttended, query, args...)
-	db.CheckError(err, "GetAttendedAssessments")
+	logger.Log.Sugar().Infoln("GetAttendedAssessments:: ", fromDate, toDate)
+	assessmentAttended := mTPS.TllmsManager.AssessmentsAttended(mprReq.UserId, assessmentList, fromDate, toDate)
 	for _, assessment := range assessmentAttended {
 		if assessment.AssessmentID.Valid {
 			result = append(result, int(assessment.AssessmentID.Int32))
@@ -864,17 +625,6 @@ func GetAttendedAssessments(assessmentList []int, mprReq *MPRReq) []int {
 	return result
 }
 
-func assessmentIdsWithoutSubjectiveAssessment(totalAssessmentIds []int) []int {
-	query, args, err := sqlx.In(GetAssessmentIdsExcludingSubjectiveAssessment,
-		totalAssessmentIds)
-	db.CheckError(err, "sqlx-GetAssessmentIdsExcludingSubjectiveAssessmentQuery")
-
-	var assessmentIds []int
-	query = db.GetPGDbReader().Rebind(query)
-	err = db.GetPGDbReader().
-		Select(&assessmentIds, query, args...)
-
-	db.CheckError(err, "GetAssessmentIdsExcludingSubjectiveAssessmentQuery")
-
-	return assessmentIds
+func (mTPS *MonthlyTestPerformanceService) assessmentIdsWithoutSubjectiveAssessment(totalAssessmentIds []int) []int {
+	return mTPS.TllmsManager.GetAssessmentIdsExcludingSubjectiveAssessment(totalAssessmentIds)
 }

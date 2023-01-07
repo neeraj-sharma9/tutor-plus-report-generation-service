@@ -5,6 +5,7 @@ import (
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/constant"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/manager"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/service/mpr"
+	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/service/tutor_plus"
 	"github.com/neeraj-sharma9/tutor-plus-report-generation-service/internal/service/wpr"
 )
 
@@ -19,11 +20,11 @@ type IReport interface {
 type ReportService struct {
 	jobManager       *manager.JobManager
 	tllmsManager     *manager.TllmsManager
-	tutorPlusService *TutorPlusService
+	tutorPlusService *tutor_plus.TutorPlusService
 }
 
 func ReportServiceInitializer(jobManager *manager.JobManager, tllmsManager *manager.TllmsManager,
-	tutorPlusService *TutorPlusService) *ReportService {
+	tutorPlusService *tutor_plus.TutorPlusService) *ReportService {
 	return &ReportService{jobManager: jobManager, tllmsManager: tllmsManager, tutorPlusService: tutorPlusService}
 }
 

@@ -13,6 +13,9 @@ const MPR_RETRY_JOB_TOPIC = "byjus-tutor-plus-mpr-retry-job"
 const KAFKA_CONSUMER_GROUP = "mpr-worker-worker-group"
 
 const TIME_LAYOUT = "2006-01-02 15:04:05"
+const IST_OFFSET = 19800
+const DATE_LAYOUT = "2006-01-02"
+const API_TIME_LAYOUT = "2006-01-02"
 
 const ASYNC_KAFKA_CONSUMERS = 6
 const RETRY = 0
