@@ -1,0 +1,310 @@
+{
+  "SUMMARY_OF_LEARNING": {
+    "CHAPTERS_COVERED": {
+      "C1": [
+        "Way to go! <User> is a great learner and covered most of topics last month.",
+        "Great progress! <User> covered most topics taught last month."
+      ],
+      "C2": [
+        "<User> is doing a great job of mastering concepts. Let's aim at covering all topics next month!",
+        "Great going! A little more regularity will ensure that <User> covers all topics in the syllabus!"
+      ],
+      "C3": [
+        "Let's motivate <User> to attend classes regularly and covered more topics across subjects.",
+        "Consistency in covering topics is key to success! Let's attend more classes and complete more topics next month."
+      ],
+      "C4": [
+        "Encourage <User> to attend more classes and cover as many concepts as possible to improve understanding.",
+        "Attending classes to cover concepts is a must to perform better. Let's motivate <User> to learn as many concepts as possible."
+      ],
+      "C5": [
+        "<User> must start attending classes to cover important concepts. We have expert teachers who make even the most complex concepts easy to understand.",
+        "<User> did not learn any new concepts taught last month! Look at the schedule for upcoming classes!"
+      ]
+    },
+    "CLASS_ATTENDANCE": {
+      "A1": [
+        "Our teachers are proud of <User>'s class attendance. Encourage <User> to keep up the effort",
+        "<User>'s class attendance is fantastic! Encourage <User> to keep up the effort"
+      ],
+      "A2": [
+        "<User>'s attendance is good. Encourage <User> to attend more classes this month",
+        "<User> attended most classes last month. Encourage <User> to attend more classes this month"
+      ],
+      "A3": [
+        "<User> missed interesting classes last month. Encourage <User> to start attending classes regularly to learn better",
+        "<User> missed quite a few classes last month. Look at the schedule of upcoming classes to help <User> stay on track"
+      ],
+      "A4": [
+        "We missed <User> last month. Looks like <User> did not attend a single class. Please reach out to me to help get <User> back on track",
+        "Attending classes is a must to understand topics and score well. Encourage <User> to attend classes this month"
+      ]
+    },
+    "POST_CLASS_CALLOUT": {
+      "0": [
+        "Looks like <User> did not complete any homework last month. The only way to improve scores is to complete homework after class.",
+        "<User> did not complete any homework last month.  It is important that <User> starts solving homework questions to improve scores."
+      ],
+      "1": [
+        "Completing homework after every class is important in improving scores. Let's encourage <User> to do assignments to improve understanding of concepts.",
+        "<User> can do better! Let's encourage <User> to put  in more of an effort in completing post-class assignments."
+      ],
+      "2": [
+        "<User> is on the right track! Let's focus more on solving questions with greater accuracy by practising more.",
+        "<User> is putting in great efforts. Let's keep it up for great results."
+      ],
+      "3": [
+        "<User> can achieve wonders by taking up more assignments to practise what is taught in class.",
+        "<User> seems to be missing out on several post class assignments. Completing homework will help <User> exceed expectations."
+      ],
+      "4": [
+        "With a little more effort in completing assignments, there would be no stopping <User> from getting to the top!",
+        "<User> can make a mark by taking up more post class assignments."
+      ],
+      "5": [
+        "<User> is on the right track! Keep up the pace to score better.",
+        "<User> is working hard. Let's practise more to perfect understanding of concepts taught in class."
+      ],
+      "6": [
+        "<User> has great potential but needs to start solving more homework assignments to become the best.",
+        "<User> needs to pick up more post-class assignments in to become the best! "
+      ],
+      "7": [
+        "<User>'s understanding of topics reflects in the good scores achieved in assignments. Let's aim at covering more practice questions this month.",
+        "<User>'s efforts standout. A little more regularity in practising  will boost performance"
+      ],
+      "8": [
+        "<User> has done a great job by scoring well in homework assignments. Let's aim to cover more concepts next month.",
+        "<User> seems to love learning. Let's take up more assignments to achieve top scores."
+      ],
+      "9": [
+        "<User> completed most assignments and scored remarkably well",
+        "Commendable! <User> seems to be doing great with homework tasks!"
+      ]
+    }
+  },
+  "SUBJECT_WISE_PERFORMANCE": {
+    "CUMULATIVE_CALLOUT": [
+      "<User> can become the best at <Subject> by not missing a single class, and practice & revision assignments. All the best!",
+      "<User> will be a pro at <Subject> with regular class attendance, thorough homework submission and frequent revision!",
+      "The key to becoming awesome at <Subject> is in practice, revision, and regular attendance. Now, let's get started!"
+    ],
+    "POST_CLASS_CALLOUT": {
+      "0": [
+        "<User> did not complete any <Subject> homework last month. Better scores can only be achieved if <User> completes homework to better understand concepts taught in class.",
+        "<User> missed finishing any <Subject> homework last month. Being regular with homework completions can help <User> score better in <Subject>",
+        "<User> is yet to complete <Subject> homework. Scores will only improve with practice. Let's get started!"
+      ],
+      "1": [
+        "<User> can do better! Motivate <User> to put more effort in completing <Subject> homework assigned after every class.",
+        "Let's put in more effort in completing <Subject> homework to perfect understanding of topics",
+        "<User> is on the right track. Revising concepts taught in class will help improve homework scores."
+      ],
+      "2": [
+        "Let's encourage <User> to spend more time revising concepts to improve <Subject> homework scores.",
+        "<User> has put in great efforts Encourage <User> to spend more time revising concepts and completing assignments to improve scores in <Subject>.",
+        "<User> will be great at <Subject> by revising concepts thoroughly and completing assignments."
+      ],
+      "3": [
+        "<User> is a bright learner Being regular with <Subject> practice assignments and homework will surely improve scores.",
+        "<User> can become the best by regularly solving <Subject> practice assignments and homework to improve scores.",
+        "Practising what's taught in class and completing homework questions will do wonders for <User>."
+      ],
+      "4": [
+        "<User> can do wonders! Let's push <User>  to regularly complete <Subject> homework after every class!",
+        "<User> has potential! Let's encourage <User> to complete <Subject> homework after every class.",
+        "<User> is almost there! Let's keep up with the practice session after class to master <Subject>."
+      ],
+      "5": [
+        "<User> has a lot of potential. Encourage <User> to revise and practise <Subject> more on the BYJU'S app to improve their scores.",
+        "<User> can achieve remarkable results. Motivate <User> to revise and practise <Subject> more to improve scores.",
+        "We love <User>'s dedication. Let's keep practising and revising to become even better!"
+      ],
+      "6": [
+        "Looks like <User> missed a lot of <Subject> homework assignments last month. Encourage them to be more regular with practice!",
+        "<User> missed attempting several <Subject> assignments last month. Let's motivate <User> to be regular with practice.",
+        "We'd like to see <User> practise more proactively by taking up more homework assignments."
+      ],
+      "7": [
+        "Encourage <User> to be more regular with <Subject> practice and homework assignments.",
+        "Regular practise with <Subject> and homework assignments will help <User> become an outstanding student.",
+        "<User> has great potential! Let's encourage <User> to take up  more practice questions."
+      ],
+      "8": [
+        "Great effort! <User> should continue being diligent with <Subject> practice and homework assignments.",
+        "<User> makes us proud and should continue to actively learn <Subject>, practise and complete homework assignments.",
+        "<User> has a sharp understanding of <Subject>. Let's now aim at taking up more practice questions!"
+      ],
+      "9": [
+        "Commendable! <User> seems to be doing great with <Subject> homework tasks!",
+        "Fantastic! <User> just loves <Subject> homework tasks",
+        "<User> is great at <Subject> and has been on top of all assignments!"
+      ]
+    },
+    "ATTENDANCE_AND_IN_CLASS": {
+      "B1" : [
+        "Great attendance and performance in class. Well done <User>! ",
+        "Superb attendance and performance in <Subject> by <User>. Keep up the learning pace! ",
+        "Well done! <User>'s attendance looks good with most concepts covered. Let's keep up the pace! "
+      ],
+      "B2": [
+        "Brilliantly regular to <Subject> classes. Let's focus on solving more practice questions to improve understanding of concepts. ",
+        "Full marks for attendance. Full marks in <Subject> can be achieved by <User> with more practise! ",
+        "<User> is one of our most regular students. Let's aim at joining all classes to develop a strong grasp over all topics. "
+      ],
+      "B3": [
+        "Love <User>'s regularity. Let's improve grasp on topics with more practise. ",
+        "<User> is remarkably regular. Let's also practice more to build a strong understanding of <Subject> ",
+        "<User> is dedicated to attending classes. Let's show the same dedication in completing post class assignments! "
+      ],
+      "B4": [
+        "<User> is a regular at <Subject> classes. Attending more classes will help improve performance! ",
+        "Proud of <User>'s regularity. Let's encourage <User> to increase self-study time on the app to improve understanding of <Subject>",
+        "Superb attendance! Now let's start submitting homework to perfect understanding of topics taught in class.  "
+      ],
+      "B5": [
+        "<User> has good attendance in <Subject>. Interacting more with the tutor and trying to answer questions will help <User> learn better. ",
+        "<User> has good attendance but to truly improve scores <User> will have to start solving post-class assignments in <Subject>",
+        "<User> can become the best at <Subject> by completing more post-class assignments. "
+      ],
+      "B6": [
+        "<User> is an ace at <Subject>! Attending more classes will help build a strong understanding of concepts. ",
+        "<User> has done a good job of all the post-class assignments. Attending more classes will help clarify all doubts. ",
+        "Self-study is as important as attending classes. <User> can score higher in <Subject> by practising after classes"
+      ],
+      "B7": [
+        "<User> needs to attend a few more classes and start completing all homework assignments to become the best at <Subject>",
+        "Good going! Attending more classes and interacting with the tutor will further improve <User>'s performance! ",
+        "The right balance of attending classes and complete post-class assignments will help <User> become the best at <Subject>."
+      ],
+      "B8": [
+        "<User>'s effort shows with good attendance. Let's also start completing more assignments to improve performance in <Subject>.",
+        "<User> has been a regular. Let's spent more time going through self-study material to become the best.",
+        "Spending more time with self-study materials will help <User> understand <Subject> better."
+      ],
+      "B9": [
+        "Good attendance but <User> needs to participate more in class and start solving homework assignments. ",
+        "Great effort! <User> has good attendance but understanding of topics will only improve with more practice and homework assignments.",
+        "The key to mastering <Subject> is in practice. <User> needs to complete homework assignments and attend classes regularly to become the best! "
+      ],
+      "B10": [
+        "<User>'s incredible potential can be unlocked with regular attendance. ",
+        "<User> needs to start attending more classes to score better in homework assignments. ",
+        "<Subject> is all about learning how to apply what you learn in class. So let's encourage <User> to become more regular and spend time doing self-study! "
+      ],
+      "B11": [
+        "<User> missed several <Subject> topics covered last month. Encourage <User> to attend classes regularly this month",
+        "Better attendance will soon translate into better scores. So encourage <User> to join classes and complete assignments.",
+        "We miss seeing <user> at <Subject> classes regularly! Let's attend more classes and complete post-class assignments to learn better."
+      ],
+      "B12": [
+        "<User> has missed several classes and assignments. Let's work towards becoming more regular this month. ",
+        "<User> needs to start solving homework assignments and attending classes. This will help <User> build a strong understanding of topics and score high!",
+        "<User> has not completed any homework assignments. Let's get started to develop a thorough understanding of <Subject>."
+      ],
+      "B13": [
+        "We missed <User> in most of our classes. Reach out to me for any support needed! ",
+        "We are eager to see <User> attend classes and submit assignment. Please connect with me if needed! ",
+        "We can't wait to see <User> join <Subject> classes and complete homework! "
+      ]
+    }
+  },
+  "MONTHLY_TEST_CALLOUT": {
+    "DIFFICULTY_ANALYSIS_CALLOUT": {
+      "0": [
+        "The graph shows <User>'s performance across questions with different difficulty levels in the test",
+        "Practice till you succeed should be <User>'s mantra!"
+      ],
+      "1": [
+        "<User> is able to answer questions of all difficulty levels. Let's keep going.",
+        "<User> is a master at answering questions no matter how easy or difficult. Let's continue to perform like a star next month too."
+      ],
+      "2": [
+        "<User> has a strong learning foundation. Now let's focus on more practice to answer more questions correctly.",
+        "<User> has a good hold of the topics, practise more to answer more questions!"
+      ],
+      "3": [
+        "<User> is very close to becoming a great learner. Let's practise more to crack tougher questions.",
+        "<User> has a good hold of the topics, practise more to crack difficult questions!"
+      ],
+      "4": [
+        "<User> has all basics covered. More practice will help <User> crack more difficult questions.",
+        "<User> is great with basic concepts. More practice will help <User> answer more difficult questions."
+      ],
+      "5": [
+        "A stronger conceptual understanding will help <User>. Let's start by practising easy questions and move up to the tougher ones.",
+        "<User> needs to build a stronger conceptual understanding. Let's start with targeting easy questions, and move up the ladder!"
+      ]
+    },
+    "SKILL_ANALYSIS_CALLOUT": {
+      "0": [
+        "This graph shows <User>'s performance in questions that required varying levels of skills.",
+        "Good effort! Let's encourage <User> to continue learning and improving!"
+      ],
+      "1": [
+        "<User> is absolutely fantastic! Let's keep up the performance across questions to deliver the best.",
+        "<User> is an amazing performer who tackles questions with accuracy. Keep it up!"
+      ],
+      "2": [
+        "<User> is good at both simple and complex questions! More practice and homework will boost performance!",
+        "<User> is good at applying concepts and solving conceptual questions. More practice questions will help improve scores."
+      ],
+      "3": [
+        "<User> is good at conceptual questions. Regular attendance and will help <User> incredibly!",
+        "<User> is great at cracking conceptual questions. Regular attendance and homework completion will help <User> answer complex questions."
+      ],
+      "4": [
+        "<User> can improve performance by strengthening basics! Watch more video lessons and practise question on the BYJU'S app.",
+        "More videos and practice questions will help <User> build a strong understanding of basics and score higher."
+      ]
+    },
+    "SUBJECT_CHAPTER_CALLOUT": {
+      "0": [
+        "<User> is on the right track! A little more practice and there would be no stopping <User>!",
+        "<User> has a good balance of key strengths and areas that need improvement. Let's focus on turning all of <User>'s weaknesses into strengths with more practice."
+      ],
+      "1": [
+        "<User> can improve scores by increasing practice and study time. Let's encourage <User> to put in consistent efforts.",
+        "<User> needs to watch more video lessons and take up more practice questions to improve performance in monthly tests."
+      ],
+      "2": [
+        "<User> is an all-round performer with great scores across topics. Let's keep this up.",
+        "<User> has an excellent understanding of all topics. Let's keep <User> motivated to perform well! "
+      ]
+    },
+    "MONTHLY_TEST_PERFORMANCE_CALLOUT": {
+      "0": [
+        "<User> is a star learner with an all India rank of #<Rank>. Let's keep up this great learning pace!",
+        "<User> secured a stunning all India rank of #<Rank>. Keep up the great work to achieve wonders."
+      ],
+      "1": [
+        "<User> did an amazing job by securing a state rank of #<Rank>. Let's work harder to get a top all India rank next month!",
+        "<User> is one of the best students in the state. Let's  develop strong study habits to get an all India rank next month."
+      ],
+      "2": [
+        "Well done! <User> is the best learner in <City>. Let's keep working hard to get a state rank next month!",
+        "<User> is an ace learner in <City>. A little more focus will <User> achieve a state rank!"
+      ],
+      "3": [
+        "<User> is a class star. With more dedication and focus, <User> can become the city's learning champion!",
+        "<User> is an outstanding performer in class! Let's now aim to become the best learner in the city by learning regularly and more practise."
+      ],
+      "4": [
+        "<User> is a good learner. Let's try securing a rank next month with more practice.",
+        "<User> is a very bright learner. Let's keep up the good work to secure a rank next month."
+      ],
+      "5": [
+        "<User> is a rising star. Let's motivate <User> to keep learning and perform like a pro learner.",
+        "<User> is a promising student. A little more focus will help <User> get on top of the class!"
+      ],
+      "6": [
+        "<User> has great potential. More time learning and practising will help improve performance.",
+        "<User> will do wonders with more time spent learning and revising important topics."
+      ],
+      "7": [
+        "Taking tests regularly is super important in understanding how well <User> learns. Connect with me to discuss the way forward.",
+        "Looks like <User> missed out on the monthly test. These tests will help <User> prepare for exams and improve scores. Connect with me for any support needed."
+      ]
+    }
+  }
+}
